@@ -1,0 +1,8 @@
+name: Media Upload
+type: module
+description: Allows uploading files in bulk and converting them to media entities.
+core: 8.x
+package: Media
+dependencies:
+  - drupal:media_entity
+  - drupal:dropzonejs

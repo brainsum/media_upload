@@ -1,0 +1,11 @@
+media_upload.bulk_media_upload:
+  class: Drupal\Core\Menu\MenuLinkDefault
+  deriver: Drupal\media_upload\Plugin\Derivative\BulkMediaUploadMenuLink
+  menu_name: bulk_media_upload
+
+media_upload.bulk_media_upload_list:
+  title: 'Upload media in bulk'
+  parent: entity.media.collection
+  route_name: media_upload.bulk_media_upload_list
+  requirements:
+    _permission: 'upload media'

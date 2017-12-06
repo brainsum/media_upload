@@ -1,0 +1,7 @@
+media_upload.bulk_media_upload_list:
+  title: 'Upload media in bulk'
+  route_name: media_upload.bulk_media_upload_list
+  appears_on:
+    - 'entity.media.add_page'
+  requirements:
+    _permission: 'upload media'

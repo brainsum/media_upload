@@ -1,0 +1,19 @@
+media_upload.bulk_media_upload_list:
+  path: 'media/bulk-upload'
+  defaults:
+    _title: 'Upload media in bulk'
+    _controller: '\Drupal\media_upload\Controller\MediaUploadController::getListContent'
+  requirements:
+    _permission: 'upload media'
+
+media_upload.bulk_media_upload:
+  path: '/media/bulk-upload/{bundle}'
+  defaults:
+    _form: '\Drupal\media_upload\Form\BulkMediaUploadForm'
+    _title: 'Multiple upload'
+  requirements:
+    _permission: 'upload media'
+  options:
+    parameters:
+      bundle:
+        type: entity:media_bundle
