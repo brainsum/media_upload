@@ -1,0 +1,10 @@
+{
+    "name": "brainsum/media_upload",
+    "description": "Provides bulk upload for media entities.",
+    "type": "drupal-module",
+    "license": "GPL-2.0+",
+    "require": {
+        "drupal/media_entity": "^1.7",
+        "drupal/dropzonejs": "^1.0"
+    }
+}
