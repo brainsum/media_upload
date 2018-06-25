@@ -7,7 +7,7 @@
 
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\media_entity\MediaBundleInterface;
+use Drupal\media\MediaTypeInterface;
 
 /**
  * Implements hook_help().
@@ -25,27 +25,30 @@ function media_upload_help($route_name, RouteMatchInterface $route_match) {
   }
 }
 
-
 /**
  * Implements hook_form_FORM_ID_alter().
  *
  * @see crop_form_media_bundle_edit_form_alter()
  */
-function media_upload_form_media_bundle_edit_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  /** @var \Drupal\media_entity\MediaBundleInterface $bundle */
-  $bundle = $form['#entity'];
+function media_upload_form_media_type_edit_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  /** @var \Drupal\media\MediaTypeForm $formObject */
+  $formObject = $form_state->getFormObject();
+  /** @var \Drupal\media\MediaTypeInterface $type */
+  $type = $formObject->getEntity();
+
   $options = [];
-  $allowed_field_types = ['file', 'image'];
+  $allowedFieldTypes = ['file', 'image'];
 
   $entityFieldManager = \Drupal::service('entity_field.manager');
 
-  foreach ($entityFieldManager->getFieldDefinitions('media', $bundle->id()) as $field_name => $field) {
-    if (in_array($field->getType(), $allowed_field_types) && !$field->getFieldStorageDefinition()->isBaseField()) {
-      $options[$field_name] = $field->getLabel();
+  /** @var \Drupal\Core\Field\FieldDefinitionInterface $field */
+  foreach ($entityFieldManager->getFieldDefinitions('media', $type->id()) as $fieldName => $field) {
+    if (\in_array($field->getType(), $allowedFieldTypes, TRUE) && !$field->getFieldStorageDefinition()->isBaseField()) {
+      $options[$fieldName] = $field->getLabel();
     }
   }
 
-  $form['#entity_builders'][] = 'media_upload_media_bundle_form_builder';
+  $form['#entity_builders'][] = '_media_upload_media_type_form_builder';
   $form['media_upload'] = [
     '#type' => 'fieldset',
     '#title' => t('Media upload configuration'),
@@ -54,9 +57,9 @@ function media_upload_form_media_bundle_edit_form_alter(&$form, FormStateInterfa
   // @todo: Add states for better UX (hide fields if enabled is FALSE).
   $form['media_upload']['enabled'] = [
     '#type' => 'checkbox',
-    '#default_value' => $bundle->getThirdPartySetting('media_upload', 'enabled'),
+    '#default_value' => $type->getThirdPartySetting('media_upload', 'enabled'),
     '#title' => t('Enable bulk-upload'),
-    '#description' => t('Check to enable bulk-upload for the bundle.'),
+    '#description' => t('Check to enable bulk-upload for the type.'),
   ];
 
   if (empty($options)) {
@@ -66,12 +69,12 @@ function media_upload_form_media_bundle_edit_form_alter(&$form, FormStateInterfa
     ];
 
     $form['media_upload']['message'] = [
-      '#markup' => t('There are no file or image fields on this bundle at the moment. In order to configure crop add at least one such field and come back.'),
+      '#markup' => t('There are no file or image fields on this type at the moment. In order to configure crop add at least one such field and come back.'),
     ];
 
     // Users shouldn't be able to enable it if there are no appropriate fields
-    // in the bundle.
-    $bundle->setThirdPartySetting('media_upload', 'enabled', FALSE);
+    // in the type.
+    $type->setThirdPartySetting('media_upload', 'enabled', FALSE);
     $form['media_upload']['enabled']['#disabled'] = TRUE;
     return;
   }
@@ -79,7 +82,7 @@ function media_upload_form_media_bundle_edit_form_alter(&$form, FormStateInterfa
   $form['media_upload']['upload_target_field'] = [
     '#type' => 'select',
     '#title' => t('Upload target field'),
-    '#default_value' => $bundle->getThirdPartySetting('media_upload', 'upload_target_field'),
+    '#default_value' => $type->getThirdPartySetting('media_upload', 'upload_target_field'),
     '#options' => $options,
     '#description' => t('Select the field that stores the file uploaded via bulk upload.'),
   ];
@@ -87,22 +90,22 @@ function media_upload_form_media_bundle_edit_form_alter(&$form, FormStateInterfa
 }
 
 /**
- * Entity builder for Media bundle.
+ * Entity builder for Media type.
  *
- * Adds third party settings to Media bundle config entity.
+ * Adds third party settings to Media type config entity.
  *
  * @see crop_media_bundle_form_builder()
  * @see media_upload_form_media_bundle_edit_form_alter()
  */
-function media_upload_media_bundle_form_builder($entity_type, MediaBundleInterface $bundle, &$form, FormStateInterface $form_state) {
+function _media_upload_media_type_form_builder($entity_type, MediaTypeInterface $type, &$form, FormStateInterface $form_state) {
   $uploadTargetField = $form_state->getValue('upload_target_field');
   // Users shouldn't be able to enable it if there are no appropriate fields
-  // in the bundle.
+  // in the type.
   if (empty($uploadTargetField)) {
-    $bundle->setThirdPartySetting('media_upload', 'enabled', FALSE);
+    $type->setThirdPartySetting('media_upload', 'enabled', FALSE);
   }
   else {
-    $bundle->setThirdPartySetting('media_upload', 'enabled', $form_state->getValue('enabled'));
+    $type->setThirdPartySetting('media_upload', 'enabled', $form_state->getValue('enabled'));
   }
-  $bundle->setThirdPartySetting('media_upload', 'upload_target_field', $uploadTargetField);
+  $type->setThirdPartySetting('media_upload', 'upload_target_field', $uploadTargetField);
 }

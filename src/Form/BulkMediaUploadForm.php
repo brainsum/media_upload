@@ -10,7 +10,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Utility\Token;
 use Drupal\file\FileInterface;
-use Drupal\media_entity\Entity\MediaBundle;
+use Drupal\media\MediaTypeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -33,11 +33,11 @@ class BulkMediaUploadForm extends FormBase {
   protected $defaultMaxFileSize = '32MB';
 
   /**
-   * Media bundle storage.
+   * Media type storage.
    *
    * @var \Drupal\Core\Entity\EntityStorageInterface
    */
-  protected $mediaBundleStorage;
+  protected $mediaTypeStorage;
 
   /**
    * Media entity storage.
@@ -71,6 +71,7 @@ class BulkMediaUploadForm extends FormBase {
    * {@inheritdoc}
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public static function create(ContainerInterface $container) {
     return new static(
@@ -94,6 +95,7 @@ class BulkMediaUploadForm extends FormBase {
    *   Token service.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function __construct(
     EntityTypeManagerInterface $entityTypeManager,
@@ -101,12 +103,12 @@ class BulkMediaUploadForm extends FormBase {
     LoggerChannelFactoryInterface $logger,
     Token $token
   ) {
-    $this->mediaBundleStorage = $entityTypeManager->getStorage('media_bundle');
+    $this->mediaTypeStorage = $entityTypeManager->getStorage('media_type');
     $this->mediaStorage = $entityTypeManager->getStorage('media');
     $this->entityFieldManager = $entityFieldManager;
     $this->logger = $logger->get('media_upload');
     $this->token = $token;
-    $this->defaultMaxFileSize = format_size(file_upload_max_size())->render();
+    $this->defaultMaxFileSize = \format_size(\file_upload_max_size())->render();
   }
 
   /**
@@ -126,30 +128,30 @@ class BulkMediaUploadForm extends FormBase {
    *   An associative array containing the structure of the form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The current state of the form.
-   * @param \Drupal\media_entity\Entity\MediaBundle $bundle
-   *   The media bundle.
+   * @param \Drupal\media\MediaTypeInterface $type
+   *   The media type.
    *
    * @return array
    *   The form structure.
    *
    * @throws \InvalidArgumentException
    */
-  public function buildForm(array $form, FormStateInterface $form_state, MediaBundle $bundle = NULL) {
-    if (NULL === $bundle) {
-      drupal_set_message('Invalid media bundle.', 'warning');
+  public function buildForm(array $form, FormStateInterface $form_state, MediaTypeInterface $type = NULL) {
+    if (NULL === $type) {
+      drupal_set_message('Invalid media type.', 'warning');
       return [];
     }
 
-    $mediaUploadSettings = $bundle->getThirdPartySettings('media_upload');
+    $mediaUploadSettings = $type->getThirdPartySettings('media_upload');
     if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || FALSE === (bool) $mediaUploadSettings['enabled']) {
-      drupal_set_message(t('Bulk-upload is not enabled for the @bundleName bundle.', [
-        '@bundleName' => $bundle->label(),
+      drupal_set_message(t('Bulk-upload is not enabled for the @typeName type.', [
+        '@typeName' => $type->label(),
       ]), 'warning');
       return [];
     }
 
-    $bundleId = $bundle->id();
-    $targetFieldSettings = $this->getTargetFieldSettings($bundleId);
+    $typeId = $type->id();
+    $targetFieldSettings = $this->getTargetFieldSettings($typeId);
 
     $extensions = $targetFieldSettings['file_extensions'];
     $maxFileSize = empty($targetFieldSettings['max_filesize']) ? $this->defaultMaxFileSize : $targetFieldSettings['max_filesize'];
@@ -176,7 +178,7 @@ class BulkMediaUploadForm extends FormBase {
     ];
 
     $information = '<p>' . $this->t('Allowed extensions: @allowedExtensions', [
-      '@allowedExtensions' => str_replace(' ', ', ', trim($extensions)),
+      '@allowedExtensions' => \str_replace(' ', ', ', \trim($extensions)),
     ]) . '</p>';
     $information .= '<p>' . $this->t('Maximum file size for each file: @maxFileSize', [
       '@maxFileSize' => $maxFileSize,
@@ -199,9 +201,9 @@ class BulkMediaUploadForm extends FormBase {
       '#extensions' => $extensions,
     ];
 
-    $form['media_bundle'] = [
+    $form['media_type'] = [
       '#type' => 'value',
-      '#value' => $bundleId,
+      '#value' => $typeId,
     ];
 
     $form['submit'] = [
@@ -235,23 +237,23 @@ class BulkMediaUploadForm extends FormBase {
       /** @var array $files */
       $files = $values['dropzonejs']['uploaded_files'];
 
-      $bundleId = $values['media_bundle'];
-      $targetFieldSettings = $this->getTargetFieldSettings($bundleId);
+      $typeId = $values['media_type'];
+      $targetFieldSettings = $this->getTargetFieldSettings($typeId);
       // Prepare destination. Patterned on protected method
       // FileItem::doGetUploadLocation and public method
       // FileItem::generateSampleValue.
-      $fileDirectory = trim($targetFieldSettings['file_directory'], '/');
+      $fileDirectory = \trim($targetFieldSettings['file_directory'], '/');
       // Replace tokens. As the tokens might contain HTML we convert
       // it to plain text.
       $fileDirectory = PlainTextOutput::renderFromHtml($this->token
         ->replace($fileDirectory));
       $targetDirectory = $targetFieldSettings['uri_scheme'] . '://' . $fileDirectory;
-      file_prepare_directory($targetDirectory, FILE_CREATE_DIRECTORY);
+      \file_prepare_directory($targetDirectory, FILE_CREATE_DIRECTORY);
 
       /** @var array $file */
       foreach ($files as $file) {
         $fileInfo = [];
-        if (preg_match(self::FILENAME_REGEX, $file['filename'], $fileInfo) !== 1) {
+        if (\preg_match(self::FILENAME_REGEX, $file['filename'], $fileInfo) !== 1) {
           $errorFlag = TRUE;
           $this->logger->warning('@filename - Incorrect file name', ['@filename' => $file['filename']]);
           drupal_set_message($this->t('@filename - Incorrect file name', ['@filename' => $file['filename']]), 'warning');
@@ -272,8 +274,8 @@ class BulkMediaUploadForm extends FormBase {
         }
 
         $destination = $targetDirectory . '/' . $file['filename'];
-        $data = file_get_contents($file['path']);
-        $fileEntity = file_save_data($data, $destination);
+        $data = \file_get_contents($file['path']);
+        $fileEntity = \file_save_data($data, $destination);
 
         if (FALSE === $fileEntity) {
           $errorFlag = TRUE;
@@ -286,13 +288,13 @@ class BulkMediaUploadForm extends FormBase {
           continue;
         }
 
-        $media = $this->mediaStorage->create($this->getNewMediaValues($bundleId, $fileInfo, $fileEntity));
+        $media = $this->mediaStorage->create($this->getNewMediaValues($typeId, $fileInfo, $fileEntity));
         $media->save();
         $createdMedia[] = $media;
         $fileCount++;
       }
 
-      $form_state->set('createdMedia', $createdMedia);
+      $form_state->set('created_media', $createdMedia);
       if ($errorFlag && !$fileCount) {
         $this->logger->warning('No documents were uploaded');
         drupal_set_message($this->t('No documents were uploaded'), 'warning');
@@ -320,30 +322,30 @@ class BulkMediaUploadForm extends FormBase {
   }
 
   /**
-   * Return the media bundle target field.
+   * Return the media type target field.
    *
-   * @param string $bundleId
-   *   Bundle ID.
+   * @param string $typeId
+   *   Type ID.
    *
    * @return string
    *   The name of the target field.
    *
    * @throws \InvalidArgumentException
    */
-  protected function getTargetFieldName($bundleId) {
-    /** @var \Drupal\media_entity\Entity\MediaBundle $bundle */
-    $bundle = $this->mediaBundleStorage->load($bundleId);
+  protected function getTargetFieldName($typeId) {
+    /** @var \Drupal\media\MediaTypeInterface $type */
+    $type = $this->mediaTypeStorage->load($typeId);
 
-    if (NULL === $bundle) {
-      throw new \InvalidArgumentException(t('The @bundleType bundle can not be found.', [
-        '@bundleType' => $bundleId,
+    if (NULL === $type) {
+      throw new \InvalidArgumentException(t('The @typeId type can not be found.', [
+        '@typeId' => $typeId,
       ]));
     }
 
-    $mediaUploadSettings = $bundle->getThirdPartySettings('media_upload');
+    $mediaUploadSettings = $type->getThirdPartySettings('media_upload');
     if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || FALSE === (bool) $mediaUploadSettings['enabled']) {
-      throw new \InvalidArgumentException(t('Bulk-upload is not enabled for the @bundleName bundle.', [
-        '@bundleName' => $bundle->label(),
+      throw new \InvalidArgumentException(t('Bulk-upload is not enabled for the @typeName type.', [
+        '@typeName' => $type->label(),
       ]));
     }
 
@@ -351,19 +353,19 @@ class BulkMediaUploadForm extends FormBase {
   }
 
   /**
-   * Get the target field settings for the bundle.
+   * Get the target field settings for the type.
    *
-   * @param string $bundleId
-   *   Bundle ID.
+   * @param string $typeId
+   *   Type ID.
    *
    * @return array|mixed[]
    *   The field settings.
    *
    * @throws \InvalidArgumentException
    */
-  protected function getTargetFieldSettings($bundleId) {
-    $fieldDefinitions = $this->entityFieldManager->getFieldDefinitions('media', $bundleId);
-    $targetFieldName = $this->getTargetFieldName($bundleId);
+  protected function getTargetFieldSettings($typeId) {
+    $fieldDefinitions = $this->entityFieldManager->getFieldDefinitions('media', $typeId);
+    $targetFieldName = $this->getTargetFieldName($typeId);
     /** @var \Drupal\field\Entity\FieldConfig $targetField */
     $targetField = $fieldDefinitions[$targetFieldName];
     return $targetField->getSettings();
@@ -372,8 +374,8 @@ class BulkMediaUploadForm extends FormBase {
   /**
    * Builds the array of all necessary info for the new media entity.
    *
-   * @param string $bundleId
-   *   Bundle ID.
+   * @param string $typeId
+   *   Type ID.
    * @param array $fileInfo
    *   File info.
    * @param \Drupal\file\FileInterface $file
@@ -385,14 +387,14 @@ class BulkMediaUploadForm extends FormBase {
    * @throws \InvalidArgumentException
    */
   protected function getNewMediaValues(
-    $bundleId,
+    $typeId,
     array $fileInfo,
     FileInterface $file
   ) {
-    $targetFieldName = $this->getTargetFieldName($bundleId);
+    $targetFieldName = $this->getTargetFieldName($typeId);
 
     return [
-      'bundle' => $bundleId,
+      'bundle' => $typeId,
       'name' => $fileInfo[self::FILE_NAME],
       $targetFieldName => [
         'target_id' => $file->id(),

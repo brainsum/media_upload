@@ -7,7 +7,7 @@ media_upload.bulk_media_upload_list:
     _permission: 'upload media'
 
 media_upload.bulk_media_upload:
-  path: '/media/bulk-upload/{bundle}'
+  path: '/media/bulk-upload/{type}'
   defaults:
     _form: '\Drupal\media_upload\Form\BulkMediaUploadForm'
     _title: 'Multiple upload'
@@ -15,5 +15,5 @@ media_upload.bulk_media_upload:
     _permission: 'upload media'
   options:
     parameters:
-      bundle:
-        type: entity:media_bundle
+      type:
+        type: entity:media_type

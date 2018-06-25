@@ -3,10 +3,10 @@ Media Upload
 INTRODUCTION
 ------------
 
-This module adds third-party settings for each media bundle in your system.
-Go to /admin/structure/media/manage/{bundle} and use the 'Media upload configuration' to enable bulk-uploading and
-set the 'Upload target field' to a file or image type field from your bundle and save the bundle.
-The go to /media/bulk-upload or /media/bulk-upload/{bundle} where you can upload your files.
+This module adds third-party settings for each media type in your system.
+Go to /admin/structure/media/manage/{type} and use the 'Media upload configuration' to enable bulk-uploading and
+set the 'Upload target field' to a file or image type field from your type and save the type.
+The go to /media/bulk-upload or /media/bulk-upload/{type} where you can upload your files.
 
 
 REQUIREMENTS
@@ -14,18 +14,8 @@ REQUIREMENTS
 
 This module requires the following modules:
 
- * Media Entity (https://drupal.org/project/media_entity)
+ * Media from Core (>= 8.4)
  * DropzoneJS (https://drupal.org/project/dropzonejs)
-
-RECOMMENDED MODULES
--------------------
-
-The following modules add providers to use for your receiving media bundles:
-
- * Media Entity Video (https://drupal.org/project/media_entity_video)
- * Media Entity Document (https://drupal.org/project/media_entity_document)
- * Media Entity Image (https://drupal.org/project/media_entity_image)
- * Media Entity Audio (https://drupal.org/project/media_entity_audio)
 
 INSTALLATION
 ------------
@@ -61,7 +51,7 @@ CONFIGURATION
  NOTE:
    This value only acts as an input filter, each uploaded file is actually
    compared to the max size value defined by the source field of the media
-   bundle you chose.
+   type you chose.
 
 TROUBLESHOOTING
 ---------------

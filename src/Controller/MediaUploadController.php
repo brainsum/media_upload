@@ -26,7 +26,9 @@ class MediaUploadController extends ControllerBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    return new static($container->get('menu.link_tree'));
+    return new static(
+      $container->get('menu.link_tree')
+    );
   }
 
   /**
@@ -54,12 +56,12 @@ class MediaUploadController extends ControllerBase {
       return [
         '#theme' => 'entity_add_list',
         '#bundles' => $content,
-        '#add_bundle_message' => t('You do not have any bulk upload forms.'),
+        '#add_type_message' => $this->t('You do not have any bulk upload forms.'),
       ];
     }
 
     return [
-      '#markup' => t('You do not have any bulk upload forms.'),
+      '#markup' => $this->t('You do not have any bulk upload forms.'),
     ];
 
   }
@@ -71,7 +73,7 @@ class MediaUploadController extends ControllerBase {
    *   The menu item to be displayed.
    *
    * @return array
-   *   An array of menu items, as expected by admin-block-content.html.twig.
+   *   An array of menu items, as expected by entity-add-list.html.twig.
    */
   protected function buildListContent($menuName) {
     $content = [];
@@ -98,7 +100,7 @@ class MediaUploadController extends ControllerBase {
       $content[$key]['description'] = $link->getDescription();
       $content[$key]['add_link'] = Link::fromTextAndUrl($link->getTitle(), $link->getUrlObject());
     }
-    ksort($content);
+    \ksort($content);
     return $content;
   }
 

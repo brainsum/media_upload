@@ -58,27 +58,28 @@ class BulkMediaUploadMenuLink extends DeriverBase implements ContainerDeriverInt
    * {@inheritdoc}
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function getDerivativeDefinitions($base_plugin_definition) {
     $links = [];
 
-    $mediaBundles = $this->entityTypeManager->getStorage('media_bundle')->loadMultiple();
+    $mediaTypes = $this->entityTypeManager->getStorage('media_type')->loadMultiple();
 
-    /** @var \Drupal\media_entity\Entity\MediaBundle $mediaBundle */
-    foreach ($mediaBundles as $mediaBundle) {
-      $mediaUploadSettings = $mediaBundle->getThirdPartySettings('media_upload');
+    /** @var \Drupal\media\MediaTypeInterface $mediaType */
+    foreach ($mediaTypes as $mediaType) {
+      $mediaUploadSettings = $mediaType->getThirdPartySettings('media_upload');
       if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || FALSE === (bool) $mediaUploadSettings['enabled']) {
-        // Skip bundles where the bulk upload is disabled on not set.
+        // Skip types where the bulk upload is disabled or not set.
         continue;
       }
 
-      $bundleId = $mediaBundle->id();
-      $linkId = "media_upload.bulk_media_upload:$bundleId";
+      $typeId = $mediaType->id();
+      $linkId = "media_upload.bulk_media_upload:$typeId";
       $links[$linkId] = $base_plugin_definition;
-      $links[$linkId]['title'] = $mediaBundle->label();
-      $links[$linkId]['description'] = $mediaBundle->getDescription();
+      $links[$linkId]['title'] = $mediaType->label();
+      $links[$linkId]['description'] = $mediaType->getDescription();
       $links[$linkId]['route_name'] = 'media_upload.bulk_media_upload';
-      $links[$linkId]['route_parameters']['bundle'] = $bundleId;
+      $links[$linkId]['route_parameters']['type'] = $typeId;
       $links[$linkId]['requirements']['_permission'] = 'upload media';
     }
 

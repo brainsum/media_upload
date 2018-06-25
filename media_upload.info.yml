@@ -4,5 +4,5 @@ description: Allows uploading files in bulk and converting them to media entitie
 core: 8.x
 package: Media
 dependencies:
-  - drupal:media_entity
+  - drupal:media (>= 8.4)
   - drupal:dropzonejs
