@@ -39,11 +39,11 @@ function media_upload_form_media_type_edit_form_alter(&$form, FormStateInterface
   $options = [];
   $allowedFieldTypes = ['file', 'image'];
 
-  $entityFieldManager = \Drupal::service('entity_field.manager');
+  $entityFieldManager = Drupal::service('entity_field.manager');
 
   /** @var \Drupal\Core\Field\FieldDefinitionInterface $field */
   foreach ($entityFieldManager->getFieldDefinitions('media', $type->id()) as $fieldName => $field) {
-    if (\in_array($field->getType(), $allowedFieldTypes, TRUE) && !$field->getFieldStorageDefinition()->isBaseField()) {
+    if (in_array($field->getType(), $allowedFieldTypes, TRUE) && !$field->getFieldStorageDefinition()->isBaseField()) {
       $options[$fieldName] = $field->getLabel();
     }
   }

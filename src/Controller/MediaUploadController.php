@@ -7,6 +7,7 @@ use Drupal\Core\Link;
 use Drupal\Core\Menu\MenuLinkTreeInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use function ksort;
 
 /**
  * Class MediaUploadController.
@@ -100,7 +101,7 @@ class MediaUploadController extends ControllerBase {
       $content[$key]['description'] = $link->getDescription();
       $content[$key]['add_link'] = Link::fromTextAndUrl($link->getTitle(), $link->getUrlObject());
     }
-    \ksort($content);
+    ksort($content);
     return $content;
   }
 

@@ -3,15 +3,27 @@
 namespace Drupal\media_upload\Form;
 
 use Drupal\Component\Render\PlainTextOutput;
+use Drupal\Component\Utility\Environment;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Utility\Token;
 use Drupal\file\FileInterface;
 use Drupal\media\MediaTypeInterface;
+use Exception;
+use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use function explode;
+use function file_get_contents;
+use function file_save_data;
+use function format_size;
+use function in_array;
+use function preg_match;
+use function str_replace;
+use function trim;
 
 /**
  * Class BulkMediaUploadForm.
@@ -21,8 +33,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class BulkMediaUploadForm extends FormBase {
 
   const COMPLETE_FILE_NAME = 0;
+
   const FILE_NAME = 1;
+
   const EXT_NAME = 2;
+
   const FILENAME_REGEX = '/(^[\w\-\. ]+)\.([a-zA-Z0-9]+)/';
 
   /**
@@ -68,6 +83,13 @@ class BulkMediaUploadForm extends FormBase {
   protected $token;
 
   /**
+   * The file system.
+   *
+   * @var \Drupal\Core\File\FileSystemInterface
+   */
+  protected $fileSystem;
+
+  /**
    * {@inheritdoc}
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
@@ -78,7 +100,8 @@ class BulkMediaUploadForm extends FormBase {
       $container->get('entity_type.manager'),
       $container->get('entity_field.manager'),
       $container->get('logger.factory'),
-      $container->get('token')
+      $container->get('token'),
+      $container->get('file_system')
     );
   }
 
@@ -93,6 +116,8 @@ class BulkMediaUploadForm extends FormBase {
    *   Logger for the media_upload module.
    * @param \Drupal\Core\Utility\Token $token
    *   Token service.
+   * @param \Drupal\Core\File\FileSystemInterface $fileSystem
+   *   The file system.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
@@ -101,14 +126,16 @@ class BulkMediaUploadForm extends FormBase {
     EntityTypeManagerInterface $entityTypeManager,
     EntityFieldManagerInterface $entityFieldManager,
     LoggerChannelFactoryInterface $logger,
-    Token $token
+    Token $token,
+    FileSystemInterface $fileSystem
   ) {
     $this->mediaTypeStorage = $entityTypeManager->getStorage('media_type');
     $this->mediaStorage = $entityTypeManager->getStorage('media');
     $this->entityFieldManager = $entityFieldManager;
     $this->logger = $logger->get('media_upload');
     $this->token = $token;
-    $this->defaultMaxFileSize = \format_size(\file_upload_max_size())->render();
+    $this->defaultMaxFileSize = format_size(Environment::getUploadMaxSize())->render();
+    $this->fileSystem = $fileSystem;
   }
 
   /**
@@ -138,15 +165,16 @@ class BulkMediaUploadForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, MediaTypeInterface $type = NULL) {
     if (NULL === $type) {
-      drupal_set_message('Invalid media type.', 'warning');
+      $this->messenger()->addWarning('Invalid media type.');
       return [];
     }
 
     $mediaUploadSettings = $type->getThirdPartySettings('media_upload');
     if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || FALSE === (bool) $mediaUploadSettings['enabled']) {
-      drupal_set_message(t('Bulk-upload is not enabled for the @typeName type.', [
-        '@typeName' => $type->label(),
-      ]), 'warning');
+      $this->messenger()
+        ->addWarning($this->t('Bulk-upload is not enabled for the @typeName type.', [
+          '@typeName' => $type->label(),
+        ]));
       return [];
     }
 
@@ -178,11 +206,11 @@ class BulkMediaUploadForm extends FormBase {
     ];
 
     $information = '<p>' . $this->t('Allowed extensions: @allowedExtensions', [
-      '@allowedExtensions' => \str_replace(' ', ', ', \trim($extensions)),
-    ]) . '</p>';
+        '@allowedExtensions' => str_replace(' ', ', ', trim($extensions)),
+      ]) . '</p>';
     $information .= '<p>' . $this->t('Maximum file size for each file: @maxFileSize', [
-      '@maxFileSize' => $maxFileSize,
-    ]) . '</p>';
+        '@maxFileSize' => $maxFileSize,
+      ]) . '</p>';
 
     $form['information_wrapper']['information'] = [
       '#type' => 'html_tag',
@@ -207,7 +235,7 @@ class BulkMediaUploadForm extends FormBase {
     ];
 
     $form['submit'] = [
-      '#type'  => 'submit',
+      '#type' => 'submit',
       '#value' => $this->t('Submit'),
     ];
 
@@ -230,7 +258,7 @@ class BulkMediaUploadForm extends FormBase {
       $values = $form_state->getValues();
       if (empty($values['dropzonejs']) || empty($values['dropzonejs']['uploaded_files'])) {
         $this->logger->warning('No documents were uploaded');
-        drupal_set_message($this->t('No documents were uploaded'), 'warning');
+        $this->messenger()->addWarning($this->t('No documents were uploaded'));
         return;
       }
 
@@ -242,49 +270,50 @@ class BulkMediaUploadForm extends FormBase {
       // Prepare destination. Patterned on protected method
       // FileItem::doGetUploadLocation and public method
       // FileItem::generateSampleValue.
-      $fileDirectory = \trim($targetFieldSettings['file_directory'], '/');
+      $fileDirectory = trim($targetFieldSettings['file_directory'], '/');
       // Replace tokens. As the tokens might contain HTML we convert
       // it to plain text.
       $fileDirectory = PlainTextOutput::renderFromHtml($this->token
         ->replace($fileDirectory));
       $targetDirectory = $targetFieldSettings['uri_scheme'] . '://' . $fileDirectory;
-      \file_prepare_directory($targetDirectory, FILE_CREATE_DIRECTORY);
+      $this->fileSystem->prepareDirectory($targetDirectory, FileSystemInterface::CREATE_DIRECTORY);
 
       /** @var array $file */
       foreach ($files as $file) {
         $fileInfo = [];
-        if (\preg_match(self::FILENAME_REGEX, $file['filename'], $fileInfo) !== 1) {
+        if (preg_match(static::FILENAME_REGEX, $file['filename'], $fileInfo) !== 1) {
           $errorFlag = TRUE;
           $this->logger->warning('@filename - Incorrect file name', ['@filename' => $file['filename']]);
-          drupal_set_message($this->t('@filename - Incorrect file name', ['@filename' => $file['filename']]), 'warning');
+          $this->messenger()
+            ->addWarning($this->t('@filename - Incorrect file name', ['@filename' => $file['filename']]));
           continue;
         }
 
-        // Use \in_array for opcode optimization.
-        // @see: https://github.com/Roave/FunctionFQNReplacer
-        if (!\in_array(
-          $fileInfo[self::EXT_NAME],
+        if (!in_array(
+          $fileInfo[static::EXT_NAME],
           explode(' ', $targetFieldSettings['file_extensions']),
           FALSE
         )) {
           $errorFlag = TRUE;
           $this->logger->error('@filename - File extension is not allowed', ['@filename' => $file['filename']]);
-          drupal_set_message($this->t('@filename - File extension is not allowed', ['@filename' => $file['filename']]), 'error');
+          $this->messenger()
+            ->addError($this->t('@filename - File extension is not allowed', ['@filename' => $file['filename']]));
           continue;
         }
 
         $destination = $targetDirectory . '/' . $file['filename'];
-        $data = \file_get_contents($file['path']);
-        $fileEntity = \file_save_data($data, $destination);
+        $data = file_get_contents($file['path']);
+        $fileEntity = file_save_data($data, $destination);
 
         if (FALSE === $fileEntity) {
           $errorFlag = TRUE;
           $this->logger->warning('@filename - File could not be saved.', [
             '@filename' => $file['filename'],
           ]);
-          drupal_set_message('@filename - File could not be saved.', [
-            '@filename' => $file['filename'],
-          ], 'warning');
+          $this->messenger()
+            ->addWarning($this->t('@filename - File could not be saved.', [
+              '@filename' => $file['filename'],
+            ]));
           continue;
         }
 
@@ -297,25 +326,27 @@ class BulkMediaUploadForm extends FormBase {
       $form_state->set('created_media', $createdMedia);
       if ($errorFlag && !$fileCount) {
         $this->logger->warning('No documents were uploaded');
-        drupal_set_message($this->t('No documents were uploaded'), 'warning');
+        $this->messenger()->addWarning($this->t('No documents were uploaded'));
         return;
       }
 
       if ($errorFlag) {
         $this->logger->info('Some documents have not been uploaded');
-        drupal_set_message($this->t('Some documents have not been uploaded'), 'warning');
+        $this->messenger()
+          ->addWarning($this->t('Some documents have not been uploaded'));
         $this->logger->info('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]);
-        drupal_set_message($this->t('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]));
+        $this->messenger()
+          ->addMessage($this->t('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]));
         return;
       }
 
       $this->logger->info('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]);
-      drupal_set_message($this->t('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]));
+      $this->messenger()
+        ->addMessage($this->t('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]));
       return;
-    }
-    catch (\Exception $e) {
+    } catch (Exception $e) {
       $this->logger->critical($e->getMessage());
-      drupal_set_message($e->getMessage(), 'error');
+      $this->messenger()->addError($e->getMessage());
 
       return;
     }
@@ -337,14 +368,14 @@ class BulkMediaUploadForm extends FormBase {
     $type = $this->mediaTypeStorage->load($typeId);
 
     if (NULL === $type) {
-      throw new \InvalidArgumentException(t('The @typeId type can not be found.', [
+      throw new InvalidArgumentException($this->t('The @typeId type can not be found.', [
         '@typeId' => $typeId,
       ]));
     }
 
     $mediaUploadSettings = $type->getThirdPartySettings('media_upload');
     if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || FALSE === (bool) $mediaUploadSettings['enabled']) {
-      throw new \InvalidArgumentException(t('Bulk-upload is not enabled for the @typeName type.', [
+      throw new InvalidArgumentException($this->t('Bulk-upload is not enabled for the @typeName type.', [
         '@typeName' => $type->label(),
       ]));
     }
@@ -395,10 +426,10 @@ class BulkMediaUploadForm extends FormBase {
 
     return [
       'bundle' => $typeId,
-      'name' => $fileInfo[self::FILE_NAME],
+      'name' => $fileInfo[static::FILE_NAME],
       $targetFieldName => [
         'target_id' => $file->id(),
-        'title' => $fileInfo[self::FILE_NAME],
+        'title' => $fileInfo[static::FILE_NAME],
       ],
     ];
   }

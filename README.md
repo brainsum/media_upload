@@ -1,7 +1,6 @@
-Media Upload
+# Media Upload
 
-INTRODUCTION
-------------
+## INTRODUCTION
 
 This module adds third-party settings for each media type in your system.
 Go to /admin/structure/media/manage/{type} and use the 'Media upload configuration' to enable bulk-uploading and
@@ -9,23 +8,48 @@ set the 'Upload target field' to a file or image type field from your type and s
 The go to /media/bulk-upload or /media/bulk-upload/{type} where you can upload your files.
 
 
-REQUIREMENTS
-------------
+## REQUIREMENTS
 
 This module requires the following modules:
 
- * Media from Core (>= 8.4)
+ * Drupal 8.7 or later
+ * Media module from Drupal Core
  * DropzoneJS (https://drupal.org/project/dropzonejs)
 
-INSTALLATION
-------------
+Note, that DropzoneJS requires the Dropzone library. The easiest way to install it is to have project based on `drupal-composer/drupal-project` or `drupal/recommended-project`, and follow these steps:
+
+* Define a custom repository for the library and set the type to "drupal-library"
+```json
+    "repositories": {
+        "drupal": {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
+        },
+        "dropzone": {
+            "type": "package",
+            "package": {
+                "name": "enyo-drupal/dropzone",
+                "version": "v4.3.0",
+                "type": "drupal-library",
+                "dist": {
+                    "url": "https://github.com/enyo/dropzone/archive/v4.3.0.zip",
+                    "type": "zip"
+                }
+            }
+        }
+    }
+```
+* Require the package: `composer require enyo-drupal/dropzone`
+
+That's it! The project templates above are already set up for handling "drupal-library" typed packages. Otherwise, `composer/installers` can be used.
+
+## INSTALLATION
 
  * Install as you would normally install a contributed Drupal module. Visit:
    https://www.drupal.org/docs/8/extending-drupal-8/installing-drupal-8-modules
    for further information.
 
-CONFIGURATION
--------------
+## CONFIGURATION
 
  * Configure user permissions in Administration » People » Permissions:
 
@@ -53,18 +77,15 @@ CONFIGURATION
    compared to the max size value defined by the source field of the media
    type you chose.
 
-TROUBLESHOOTING
----------------
+## TROUBLESHOOTING
 
  * Section waiting for its first problems to solve.
 
-FAQ
----
+## FAQ
 
  * Section waiting for its first questions to answer.
 
-MAINTAINERS
------------
+## MAINTAINERS
 
 Current maintainers:
  * Tanguy Reuliaux (treuliaux) - https://www.drupal.org/u/treuliaux
@@ -78,7 +99,6 @@ This project has been sponsored by:
    KLEE INTERACTIVE is a KLEE GROUP agency.
    Visit http://www.kleeinteractive.com/ for more information.
 
-SPECIAL THANKS
---------------
+## SPECIAL THANKS
  * Shawn Duncan (FatherShawn) - https://www.drupal.org/u/fathershawn
  * Antonio Savorelli (antiorario) - https://www.drupal.org/u/antiorario
