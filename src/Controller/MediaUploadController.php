@@ -95,7 +95,6 @@ class MediaUploadController extends ControllerBase {
         continue;
       }
 
-      /** @var \Drupal\Core\Menu\MenuLinkInterface $link */
       $link = $element->link;
       $content[$key]['label'] = $link->getTitle();
       $content[$key]['description'] = $link->getDescription();
