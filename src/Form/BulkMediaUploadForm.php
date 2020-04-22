@@ -23,6 +23,7 @@ use function format_size;
 use function in_array;
 use function preg_match;
 use function str_replace;
+use function strtolower;
 use function trim;
 
 /**
@@ -181,7 +182,7 @@ class BulkMediaUploadForm extends FormBase {
     $typeId = $type->id();
     $targetFieldSettings = $this->getTargetFieldSettings($typeId);
 
-    $extensions = $targetFieldSettings['file_extensions'];
+    $extensions = strtolower($targetFieldSettings['file_extensions']);
     $maxFileSize = empty($targetFieldSettings['max_filesize']) ? $this->defaultMaxFileSize : $targetFieldSettings['max_filesize'];
 
     $form['#tree'] = TRUE;
@@ -206,11 +207,11 @@ class BulkMediaUploadForm extends FormBase {
     ];
 
     $information = '<p>' . $this->t('Allowed extensions: @allowedExtensions', [
-        '@allowedExtensions' => str_replace(' ', ', ', trim($extensions)),
-      ]) . '</p>';
+      '@allowedExtensions' => str_replace(' ', ', ', trim($extensions)),
+    ]) . '</p>';
     $information .= '<p>' . $this->t('Maximum file size for each file: @maxFileSize', [
-        '@maxFileSize' => $maxFileSize,
-      ]) . '</p>';
+      '@maxFileSize' => $maxFileSize,
+    ]) . '</p>';
 
     $form['information_wrapper']['information'] = [
       '#type' => 'html_tag',
@@ -289,9 +290,10 @@ class BulkMediaUploadForm extends FormBase {
           continue;
         }
 
+        // @todo: Not sure if strtolower() is the best approach.
         if (!in_array(
-          $fileInfo[static::EXT_NAME],
-          explode(' ', $targetFieldSettings['file_extensions']),
+          strtolower($fileInfo[static::EXT_NAME]),
+          explode(' ', strtolower($targetFieldSettings['file_extensions'])),
           FALSE
         )) {
           $errorFlag = TRUE;
@@ -344,7 +346,8 @@ class BulkMediaUploadForm extends FormBase {
       $this->messenger()
         ->addMessage($this->t('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]));
       return;
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
       $this->logger->critical($e->getMessage());
       $this->messenger()->addError($e->getMessage());
 
