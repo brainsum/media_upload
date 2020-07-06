@@ -33,13 +33,13 @@ use function trim;
  */
 class BulkMediaUploadForm extends FormBase {
 
-  const COMPLETE_FILE_NAME = 0;
+  public const COMPLETE_FILE_NAME = 0;
 
-  const FILE_NAME = 1;
+  public const FILE_NAME = 1;
 
-  const EXT_NAME = 2;
+  public const EXT_NAME = 2;
 
-  const FILENAME_REGEX = '/(^[\w\-\. ]+)\.([a-zA-Z0-9]+)/';
+  public const FILENAME_REGEX = '/(^[\w\-\. ]+)\.([a-zA-Z0-9]+)/';
 
   /**
    * Default max file size.
@@ -307,7 +307,7 @@ class BulkMediaUploadForm extends FormBase {
         $data = file_get_contents($file['path']);
         $fileEntity = file_save_data($data, $destination);
 
-        if (FALSE === $fileEntity) {
+        if ($fileEntity === FALSE) {
           $errorFlag = TRUE;
           $this->logger->warning('@filename - File could not be saved.', [
             '@filename' => $file['filename'],
@@ -371,16 +371,12 @@ class BulkMediaUploadForm extends FormBase {
     $type = $this->mediaTypeStorage->load($typeId);
 
     if (NULL === $type) {
-      throw new InvalidArgumentException($this->t('The @typeId type can not be found.', [
-        '@typeId' => $typeId,
-      ]));
+      throw new InvalidArgumentException("The '{$typeId}' type can not be found.");
     }
 
     $mediaUploadSettings = $type->getThirdPartySettings('media_upload');
-    if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || FALSE === (bool) $mediaUploadSettings['enabled']) {
-      throw new InvalidArgumentException($this->t('Bulk-upload is not enabled for the @typeName type.', [
-        '@typeName' => $type->label(),
-      ]));
+    if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || (bool) $mediaUploadSettings['enabled'] === FALSE) {
+      throw new InvalidArgumentException("Bulk-upload is not enabled for the {$type->label()} type.");
     }
 
     return $mediaUploadSettings['upload_target_field'];

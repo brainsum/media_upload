@@ -12,34 +12,35 @@ The go to /media/bulk-upload or /media/bulk-upload/{type} where you can upload y
 
 This module requires the following modules:
 
- * Drupal 8.7 or later
+ * Drupal 9.0 or later
  * Media module from Drupal Core
  * DropzoneJS (https://drupal.org/project/dropzonejs)
 
 Note, that DropzoneJS requires the Dropzone library. The easiest way to install it is to have project based on `drupal-composer/drupal-project` or `drupal/recommended-project`, and follow these steps:
 
-* Define a custom repository for the library and set the type to "drupal-library"
+* Set up asset-packagist:
 ```json
     "repositories": {
         "drupal": {
             "type": "composer",
             "url": "https://packages.drupal.org/8"
         },
-        "dropzone": {
-            "type": "package",
-            "package": {
-                "name": "enyo-drupal/dropzone",
-                "version": "v4.3.0",
-                "type": "drupal-library",
-                "dist": {
-                    "url": "https://github.com/enyo/dropzone/archive/v4.3.0.zip",
-                    "type": "zip"
-                }
-            }
+        "asset-packagist": {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
         }
     }
 ```
-* Require the package: `composer require enyo-drupal/dropzone`
+* Add `"installer-types": ["bower-asset", "npm-asset"]` to the `extra` key
+* Extend `installer-paths` under `extra` with
+```json
+    "web/libraries/{$name}": [
+        "type:drupal-library",
+        "type:bower-asset",
+        "type:npm-asset"
+    ],
+```
+* Require a helper package and the dropzone package: `composer require oomphinc/composer-installers-extender:^1.1 npm-asset/dropzone:^5.7`
 
 That's it! The project templates above are already set up for handling "drupal-library" typed packages. Otherwise, `composer/installers` can be used.
 
