@@ -1,7 +1,5 @@
 <?php
 
-use Drupal\file\Plugin\Field\FieldType\FileItem;
-
 /**
  * @file
  * Contains media_upload.module..
@@ -10,6 +8,7 @@ use Drupal\file\Plugin\Field\FieldType\FileItem;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\file\Plugin\Field\FieldType\FileItem;
 use Drupal\media\MediaTypeInterface;
 
 /**
