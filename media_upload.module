@@ -1,10 +1,13 @@
 <?php
 
+use Drupal\file\Plugin\Field\FieldType\FileItem;
+
 /**
  * @file
  * Contains media_upload.module..
  */
 
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\media\MediaTypeInterface;
@@ -36,14 +39,34 @@ function media_upload_form_media_type_edit_form_alter(&$form, FormStateInterface
   /** @var \Drupal\media\MediaTypeInterface $type */
   $type = $formObject->getEntity();
 
-  $options = [];
-  $allowedFieldTypes = ['file', 'image'];
+  /** @var \Drupal\Core\Field\FieldTypePluginManagerInterface $fieldTypeManager */
+  $fieldTypeManager = Drupal::service('plugin.manager.field.field_type');
 
+  $supportedTypes = [];
+
+  foreach ($fieldTypeManager->getDefinitions() as $id => $definition) {
+    try {
+      $className = $fieldTypeManager->getPluginClass($id);
+    }
+    catch (PluginNotFoundException $e) {
+      continue;
+    }
+
+    if (
+      $className === FileItem::class
+      || in_array(FileItem::class, class_parents($className), TRUE)
+    ) {
+      $supportedTypes[] = $id;
+    }
+  }
+
+  /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager */
   $entityFieldManager = Drupal::service('entity_field.manager');
+  $options = [];
 
   /** @var \Drupal\Core\Field\FieldDefinitionInterface $field */
   foreach ($entityFieldManager->getFieldDefinitions('media', $type->id()) as $fieldName => $field) {
-    if (in_array($field->getType(), $allowedFieldTypes, TRUE) && !$field->getFieldStorageDefinition()->isBaseField()) {
+    if (in_array($field->getType(), $supportedTypes, TRUE) && !$field->getFieldStorageDefinition()->isBaseField()) {
       $options[$fieldName] = $field->getLabel();
     }
   }
