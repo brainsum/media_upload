@@ -2,7 +2,7 @@ name: Media Upload
 type: module
 description: Allows uploading files in bulk and converting them to media entities.
 
-core_version_requirement: ^9
+core_version_requirement: ^9 || ^10
 
 package: Media
 dependencies:

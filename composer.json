@@ -11,7 +11,7 @@
     },
     "require": {
         "php": ">=7.4",
-        "drupal/core": "^9.0",
+        "drupal/core": ">=9.0",
         "drupal/dropzonejs": "^2.1"
     },
     "minimum-stability": "dev",
