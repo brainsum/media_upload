@@ -12,13 +12,13 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Utility\Token;
 use Drupal\file\FileInterface;
+use Drupal\file\FileRepositoryInterface;
 use Drupal\media\MediaTypeInterface;
 use Exception;
 use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use function explode;
 use function file_get_contents;
-use function file_save_data;
 use function format_size;
 use function in_array;
 use function preg_match;
@@ -91,6 +91,13 @@ class BulkMediaUploadForm extends FormBase {
   protected $fileSystem;
 
   /**
+   * File repository service.
+   *
+   * @var \Drupal\file\FileRepositoryInterface
+   */
+  protected FileRepositoryInterface $fileRepository;
+
+  /**
    * {@inheritdoc}
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
@@ -102,7 +109,8 @@ class BulkMediaUploadForm extends FormBase {
       $container->get('entity_field.manager'),
       $container->get('logger.factory'),
       $container->get('token'),
-      $container->get('file_system')
+      $container->get('file_system'),
+      $container->get('file.repository')
     );
   }
 
@@ -128,7 +136,8 @@ class BulkMediaUploadForm extends FormBase {
     EntityFieldManagerInterface $entityFieldManager,
     LoggerChannelFactoryInterface $logger,
     Token $token,
-    FileSystemInterface $fileSystem
+    FileSystemInterface $fileSystem,
+    FileRepositoryInterface $fileRepository
   ) {
     $this->mediaTypeStorage = $entityTypeManager->getStorage('media_type');
     $this->mediaStorage = $entityTypeManager->getStorage('media');
@@ -137,6 +146,7 @@ class BulkMediaUploadForm extends FormBase {
     $this->token = $token;
     $this->defaultMaxFileSize = format_size(Environment::getUploadMaxSize())->render();
     $this->fileSystem = $fileSystem;
+    $this->fileRepository = $fileRepository;
   }
 
   /**
@@ -305,9 +315,9 @@ class BulkMediaUploadForm extends FormBase {
 
         $destination = $targetDirectory . '/' . $file['filename'];
         $data = file_get_contents($file['path']);
-        $fileEntity = file_save_data($data, $destination);
+        $fileEntity = $this->fileRepository->writeData($data, $destination);
 
-        if ($fileEntity === FALSE) {
+        if (!$fileEntity) {
           $errorFlag = TRUE;
           $this->logger->warning('@filename - File could not be saved.', [
             '@filename' => $file['filename'],
