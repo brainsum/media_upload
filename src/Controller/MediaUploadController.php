@@ -10,7 +10,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use function ksort;
 
 /**
- * Class MediaUploadController.
+ * List media/add links for bulk upload enabled.
  *
  * @package Drupal\media_upload\Controller
  */

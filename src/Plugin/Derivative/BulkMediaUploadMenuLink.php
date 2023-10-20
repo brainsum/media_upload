@@ -8,7 +8,7 @@ use Drupal\Core\Plugin\Discovery\ContainerDeriverInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Class BulkMediaUploadMenuLink.
+ * Generate links for media bundles - for bulk upload enabled.
  *
  * @package Drupal\media_upload\Plugin\Derivative
  */

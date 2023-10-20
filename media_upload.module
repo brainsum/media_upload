@@ -76,7 +76,7 @@ function media_upload_form_media_type_edit_form_alter(&$form, FormStateInterface
     '#title' => t('Media upload configuration'),
   ];
 
-  // @todo: Add states for better UX (hide fields if enabled is FALSE).
+  // @todo Add states for better UX (hide fields if enabled is FALSE).
   $form['media_upload']['enabled'] = [
     '#type' => 'checkbox',
     '#default_value' => $type->getThirdPartySetting('media_upload', 'enabled'),

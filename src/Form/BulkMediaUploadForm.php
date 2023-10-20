@@ -14,8 +14,6 @@ use Drupal\Core\Utility\Token;
 use Drupal\file\FileInterface;
 use Drupal\file\FileRepositoryInterface;
 use Drupal\media\MediaTypeInterface;
-use Exception;
-use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use function explode;
 use function file_get_contents;
@@ -27,7 +25,7 @@ use function strtolower;
 use function trim;
 
 /**
- * Class BulkMediaUploadForm.
+ * Bulk media upload form.
  *
  * @package Drupal\media_upload\Form
  */
@@ -127,6 +125,8 @@ class BulkMediaUploadForm extends FormBase {
    *   Token service.
    * @param \Drupal\Core\File\FileSystemInterface $fileSystem
    *   The file system.
+   * @param \Drupal\file\FileRepositoryInterface $fileRepository
+   *   File repository service.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
@@ -300,7 +300,7 @@ class BulkMediaUploadForm extends FormBase {
           continue;
         }
 
-        // @todo: Not sure if strtolower() is the best approach.
+        // @todo Not sure if strtolower() is the best approach.
         if (!in_array(
           strtolower($fileInfo[static::EXT_NAME]),
           explode(' ', strtolower($targetFieldSettings['file_extensions'])),
@@ -357,7 +357,7 @@ class BulkMediaUploadForm extends FormBase {
         ->addMessage($this->t('@fileCount documents have been uploaded', ['@fileCount' => $fileCount]));
       return;
     }
-    catch (Exception $e) {
+    catch (\Exception $e) {
       $this->logger->critical($e->getMessage());
       $this->messenger()->addError($e->getMessage());
 
@@ -381,12 +381,12 @@ class BulkMediaUploadForm extends FormBase {
     $type = $this->mediaTypeStorage->load($typeId);
 
     if (NULL === $type) {
-      throw new InvalidArgumentException("The '{$typeId}' type can not be found.");
+      throw new \InvalidArgumentException("The '{$typeId}' type can not be found.");
     }
 
     $mediaUploadSettings = $type->getThirdPartySettings('media_upload');
     if (empty($mediaUploadSettings) || !isset($mediaUploadSettings['enabled']) || (bool) $mediaUploadSettings['enabled'] === FALSE) {
-      throw new InvalidArgumentException("Bulk-upload is not enabled for the {$type->label()} type.");
+      throw new \InvalidArgumentException("Bulk-upload is not enabled for the {$type->label()} type.");
     }
 
     return $mediaUploadSettings['upload_target_field'];
