@@ -7,5 +7,3 @@ media_upload.bulk_media_upload_list:
   title: 'Upload media in bulk'
   parent: entity.media.collection
   route_name: media_upload.bulk_media_upload_list
-  requirements:
-    _permission: 'upload media'
